@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import type { CalendarOccurrence } from "../domain/types.js";
-import { formatChineseDateTime } from "../domain/recurrence.js";
+import { formatChineseDateTime, parseDateTime } from "../domain/recurrence.js";
 import {
   CalendarConflictError,
   CalendarService,
@@ -40,8 +40,38 @@ function confirmationRequiredResult(error: CalendarConfirmationRequiredError) {
   });
 }
 
+function formatOccurrenceTimeRange(item: CalendarOccurrence): string {
+  const start = parseDateTime(item.effectiveStartAt, item.timeZone);
+  if (!item.effectiveEndAt) return start.toFormat("yyyy年M月d日 HH:mm");
+  const end = parseDateTime(item.effectiveEndAt, item.timeZone);
+  return start.hasSame(end, "day")
+    ? `${start.toFormat("yyyy年M月d日 HH:mm")}–${end.toFormat("HH:mm")}`
+    : `${start.toFormat("yyyy年M月d日 HH:mm")}–${end.toFormat("yyyy年M月d日 HH:mm")}`;
+}
+
 function summarizeOccurrence(item: CalendarOccurrence): string {
-  return `${formatChineseDateTime(item.effectiveStartAt, item.timeZone)} ${item.title}`;
+  return `${formatOccurrenceTimeRange(item)} ${item.title}`;
+}
+
+function presentOccurrence(item: CalendarOccurrence) {
+  return {
+    ...item,
+    displayStartAt: formatChineseDateTime(item.effectiveStartAt, item.timeZone),
+    displayEndAt: item.effectiveEndAt
+      ? formatChineseDateTime(item.effectiveEndAt, item.timeZone)
+      : null,
+    displayTimeRange: formatOccurrenceTimeRange(item),
+  };
+}
+
+function resolveCurrentReminderId(
+  reminderService: ReminderService,
+  reminderId: string | undefined,
+): string {
+  if (reminderId) return reminderId;
+  const current = reminderService.listDue()[0];
+  if (!current) throw new Error("当前没有需要处理的到期提醒");
+  return current.reminder.id;
 }
 
 export function createCalendarMcpServer(
@@ -132,7 +162,7 @@ export function createCalendarMcpServer(
     {
       title: "查询日程",
       description:
-        "按用户原话对应的明确时间范围查询今天、指定日期、本周、本月或今年。自然日查询必须使用当地日期边界：‘今天’是今天 00:00（包含）到明天 00:00（不包含），‘明天’是明天 00:00 到后天 00:00；即使日程时间已过也保留在该自然日结果中。只有‘接下来’‘之后’‘未来’等未来语义才从当前时间开始；禁止把‘今天’查询成现在起未来 24 小时。语音只播报前两条，完整列表已同时写入 IM 回执。",
+        "按用户原话对应的明确时间范围查询今天、指定日期、本周、本月或今年。自然日查询必须使用当地日期边界：‘今天’是今天 00:00（包含）到明天 00:00（不包含），‘明天’是明天 00:00 到后天 00:00；即使日程时间已过也保留在该自然日结果中。只有‘接下来’‘之后’‘未来’等未来语义才从当前时间开始；禁止把‘今天’查询成现在起未来 24 小时。语音只播报前两条，完整列表已同时写入 IM 回执。播报时间必须使用 speech 或 occurrences[].displayTimeRange；effectiveStartAt/effectiveEndAt 是 UTC 存储值，禁止直接读取其中的小时。",
       inputSchema: {
         rangeStart: z
           .string()
@@ -153,7 +183,7 @@ export function createCalendarMcpServer(
           ok: true,
           speech,
           total: queried.occurrences.length,
-          occurrences: queried.occurrences,
+          occurrences: queried.occurrences.map(presentOccurrence),
           receiptId: queried.receipt.id,
         });
       } catch (error) {
@@ -167,7 +197,7 @@ export function createCalendarMcpServer(
     {
       title: "查找待修改日程",
       description:
-        "修改日程前按标题和可选时间范围查找候选项。返回多个候选时必须让用户指定，不能猜测。",
+        "修改日程前按标题和可选时间范围查找候选项。返回多个候选时必须让用户指定，不能猜测。向用户复述时间时只能使用 speech 或 candidates[].displayTimeRange；effectiveStartAt/effectiveEndAt 是 UTC 存储值，禁止直接读取其中的小时。",
       inputSchema: {
         query: z.string().min(1).describe("日程标题关键词"),
         rangeStart: z.string().optional().describe("ISO 8601 范围开始"),
@@ -177,6 +207,7 @@ export function createCalendarMcpServer(
     async (input) => {
       try {
         const candidates = calendarService.find(input);
+        const candidateSummaries = candidates.map(summarizeOccurrence);
         return result({
           ok: true,
           speech:
@@ -184,8 +215,8 @@ export function createCalendarMcpServer(
               ? "没有找到符合条件的日程。"
               : candidates.length === 1
                 ? `找到${summarizeOccurrence(candidates[0]!)}`
-                : `找到${candidates.length}条日程，请用户指定要修改哪一条。`,
-          candidates,
+                : `找到${candidates.length}条日程：${candidateSummaries.join("；")}。请用户指定要修改哪一条。`,
+          candidates: candidates.map(presentOccurrence),
           requiresDisambiguation: candidates.length > 1,
         });
       } catch (error) {
@@ -265,18 +296,24 @@ export function createCalendarMcpServer(
     "reminder_close",
     {
       title: "关闭当前提醒",
-      description: "用户说知道了或不用再响了时调用。只关闭提醒，不修改日程。",
+      description:
+        "用户说知道了或不用再响了时调用。只关闭提醒，不修改日程。用户回应当前展示或刚播报的提醒时省略 reminderId，工具会处理当前第一条。",
       inputSchema: {
-        reminderId: z.string().uuid().describe("来自 reminder_list_due 的提醒 ID"),
+        reminderId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe("仅在用户明确指定其他提醒时传入；回应当前提醒时省略"),
       },
     },
     async ({ reminderId }) => {
       try {
-        const closed = reminderService.close(reminderId);
+        const resolvedReminderId = resolveCurrentReminderId(reminderService, reminderId);
+        const closed = reminderService.close(resolvedReminderId);
         return result({
           ok: true,
           speech: closed.alreadyClosed ? "这条提醒已经关闭。" : "好的，已关闭提醒，日程保持不变。",
-          reminderId,
+          reminderId: resolvedReminderId,
           alreadyClosed: closed.alreadyClosed,
           receiptId: closed.receipt?.id ?? null,
         });
@@ -291,21 +328,26 @@ export function createCalendarMcpServer(
     {
       title: "推迟当前提醒",
       description:
-        "用户明确说出推迟分钟数后调用。未说明多久时必须先追问。只推迟提醒，不修改日程。",
+        "用户明确说出推迟分钟数后调用。未说明多久时必须先追问。只推迟提醒，不修改日程。用户回应当前展示或刚播报的提醒时省略 reminderId，工具会处理当前第一条。",
       inputSchema: {
-        reminderId: z.string().uuid().describe("来自 reminder_list_due 的提醒 ID"),
+        reminderId: z
+          .string()
+          .uuid()
+          .optional()
+          .describe("仅在用户明确指定其他提醒时传入；回应当前提醒时省略"),
         minutes: z.number().int().min(1).max(1440),
       },
     },
     async ({ reminderId, minutes }) => {
       try {
-        const snoozed = reminderService.snooze(reminderId, minutes);
+        const resolvedReminderId = resolveCurrentReminderId(reminderService, reminderId);
+        const snoozed = reminderService.snooze(resolvedReminderId, minutes);
         return result({
           ok: true,
           speech: snoozed.alreadySnoozed
             ? "这条提醒已经推迟过了。"
             : `好的，${minutes}分钟后再次提醒，日程保持不变。`,
-          reminderId,
+          reminderId: resolvedReminderId,
           nextTriggerAt: snoozed.reminder.triggerAt,
           snoozeCount: snoozed.reminder.snoozeCount,
           alreadySnoozed: snoozed.alreadySnoozed,

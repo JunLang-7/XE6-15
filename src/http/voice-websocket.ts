@@ -6,13 +6,30 @@ import {
   type PcmInteractionOptions,
   type PcmInputInteraction,
 } from "../clients/linx-mac-voice-client.js";
+import type { ReminderService } from "../services/reminder-service.js";
 import type { CalendarDatabase } from "../storage/database.js";
 
 interface VoiceWebSocketDependencies {
   db: Pick<CalendarDatabase, "listReceipts">;
+  reminderService?: Pick<ReminderService, "listDue" | "close" | "snooze">;
   voiceClient?: {
     startPcmInteraction(options?: PcmInteractionOptions): Promise<PcmInputInteraction>;
   };
+}
+
+type LocalReminderCommand =
+  | { type: "close" }
+  | { type: "snooze"; minutes: number };
+
+export function parseLocalReminderCommand(text: string): LocalReminderCommand | null {
+  const normalized = text.trim().replace(/[，。！？、,.!?\s]/g, "");
+  if (/^(好的?)?(我)?知道了$/.test(normalized) || /^(不用再响了|关闭提醒)$/.test(normalized)) {
+    return { type: "close" };
+  }
+  if (/^(十|10)分钟后(再)?提醒(我)?$/.test(normalized)) {
+    return { type: "snooze", minutes: 10 };
+  }
+  return null;
 }
 
 function rawDataToBuffer(data: RawData): Buffer {
@@ -78,14 +95,39 @@ export function attachVoiceWebSocketServer(
       interruptActiveTurn();
       const receiptIdsBefore = new Set(deps.db.listReceipts(200).map((receipt) => receipt.id));
       const sentReceiptIds = new Set<string>();
+      let localReminderCommandHandled = false;
 
       try {
         const interaction = await voiceClient.startPcmInteraction({
           onTranscription(text) {
-            if (turn === currentTurn) send(socket, { type: "stt", text });
+            if (turn !== currentTurn) return;
+            send(socket, { type: "stt", text });
+            if (localReminderCommandHandled || !deps.reminderService) return;
+            const command = parseLocalReminderCommand(text);
+            if (!command) return;
+            const current = deps.reminderService.listDue()[0];
+            if (!current) return;
+
+            localReminderCommandHandled = true;
+            activeInteraction?.interrupt("local_reminder_command");
+            if (command.type === "close") {
+              deps.reminderService.close(current.reminder.id);
+              send(socket, {
+                type: "message",
+                text: "好的，已关闭提醒，日程保持不变。",
+                localReminderAction: "closed",
+              });
+              return;
+            }
+            deps.reminderService.snooze(current.reminder.id, command.minutes);
+            send(socket, {
+              type: "message",
+              text: `好的，${command.minutes}分钟后再次提醒，日程保持不变。`,
+              localReminderAction: "snoozed",
+            });
           },
           async onSpokenText(text) {
-            if (turn !== currentTurn) return;
+            if (turn !== currentTurn || localReminderCommandHandled) return;
             const queryReceipt = [...deps.db.listReceipts(200)]
               .reverse()
               .find((receipt) =>

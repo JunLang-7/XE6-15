@@ -66,6 +66,28 @@
             </header>
             <div id="schedule-items" class="schedule-items"></div>
           </section>
+          <form
+            id="reminder-card"
+            class="reminder-card"
+            aria-labelledby="reminder-title"
+            aria-live="assertive"
+            hidden
+          >
+            <div class="reminder-status">
+              <span class="reminder-status-dot" aria-hidden="true"></span>
+              <p id="reminder-kicker">提醒到点了</p>
+            </div>
+            <h2 id="reminder-title">当前提醒</h2>
+            <p id="reminder-time" class="reminder-time"></p>
+            <p id="reminder-queue" class="reminder-queue" hidden></p>
+            <div class="reminder-card-actions">
+              <button id="reminder-close" class="reminder-primary" type="button">知道了</button>
+              <button id="reminder-snooze" class="reminder-secondary" type="button">
+                10 分钟后提醒
+              </button>
+            </div>
+            <p id="reminder-error" class="reminder-error" role="alert" hidden></p>
+          </form>
         </div>
 
         <div class="voice-dock">

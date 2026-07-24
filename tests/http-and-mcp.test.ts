@@ -42,6 +42,8 @@ describe("HTTP and MCP integration", () => {
     await request(application.app).get("/").set("Host", "example.test").expect(404);
     const page = await request(application.app).get("/").set("Host", "localhost").expect(200);
     expect(page.text).toContain("按住说话");
+    expect(page.text).toContain("提醒到点了");
+    expect(page.text).toContain("10 分钟后提醒");
     expect(page.text).toContain("你的日程操作与提醒会留在这里");
     expect(page.text).toContain("/settings.html");
     expect(page.text).not.toContain("DEMO CLOCK");
@@ -216,7 +218,73 @@ describe("HTTP and MCP integration", () => {
       expect(calendarCreate?.inputSchema.properties).toMatchObject({
         conflictConfirmationToken: { description: expect.stringContaining("用户明确确认") },
       });
+      const reminderClose = tools.tools.find((tool) => tool.name === "reminder_close");
+      const reminderSnooze = tools.tools.find((tool) => tool.name === "reminder_snooze");
+      expect(reminderClose?.description).toContain("省略 reminderId");
+      expect(reminderClose?.inputSchema.required ?? []).not.toContain("reminderId");
+      expect(reminderSnooze?.inputSchema.required ?? []).not.toContain("reminderId");
 
+      const closeTarget = services.calendarService.create({
+        title: "吃药",
+        startsAt: "2026-07-21T09:01:00+08:00",
+      });
+      services.clock.advance(1);
+      await services.reminderService.scanDue();
+      const closedCurrent = await client.callTool({
+        name: "reminder_close",
+        arguments: {},
+      });
+      expect(closedCurrent.structuredContent).toMatchObject({
+        ok: true,
+        reminderId: closeTarget.reminder.id,
+      });
+
+      const snoozeTarget = services.calendarService.create({
+        title: "活动一下",
+        startsAt: "2026-07-21T09:02:00+08:00",
+      });
+      services.clock.advance(1);
+      await services.reminderService.scanDue();
+      const snoozedCurrent = await client.callTool({
+        name: "reminder_snooze",
+        arguments: { minutes: 10 },
+      });
+      expect(snoozedCurrent.structuredContent).toMatchObject({
+        ok: true,
+        reminderId: snoozeTarget.reminder.id,
+        snoozeCount: 1,
+      });
+
+      await client.callTool({
+        name: "calendar_create",
+        arguments: {
+          title: "晚间会议",
+          startsAt: "2026-07-21T18:00:00+08:00",
+          endsAt: "2026-07-21T19:00:00+08:00",
+          kind: "time_block",
+        },
+      });
+      const foundEveningMeeting = await client.callTool({
+        name: "calendar_find",
+        arguments: {
+          query: "晚间会议",
+          rangeStart: "2026-07-21T00:00:00+08:00",
+          rangeEnd: "2026-07-22T00:00:00+08:00",
+        },
+      });
+      expect(foundEveningMeeting.structuredContent).toMatchObject({
+        ok: true,
+        speech: expect.stringContaining("18:00–19:00"),
+        candidates: [{
+          effectiveStartAt: "2026-07-21T10:00:00.000Z",
+          effectiveEndAt: "2026-07-21T11:00:00.000Z",
+          displayStartAt: "2026年7月21日 18:00",
+          displayEndAt: "2026年7月21日 19:00",
+          displayTimeRange: "2026年7月21日 18:00–19:00",
+        }],
+      });
+
+      const eventCountBeforeConflict = services.db.listEvents().length;
       await client.callTool({
         name: "calendar_create",
         arguments: { title: "开会", startsAt: "2026-07-21T11:00:00+08:00" },
@@ -235,7 +303,7 @@ describe("HTTP and MCP integration", () => {
         conflictConfirmationToken: string;
       };
       expect(blockedContent.conflictConfirmationToken).toMatch(/^[a-f0-9]{64}$/);
-      expect(services.db.listEvents()).toHaveLength(1);
+      expect(services.db.listEvents()).toHaveLength(eventCountBeforeConflict + 1);
 
       const confirmed = await client.callTool({
         name: "calendar_create",
@@ -249,7 +317,7 @@ describe("HTTP and MCP integration", () => {
         ok: true,
         conflictConfirmed: true,
       });
-      expect(services.db.listEvents()).toHaveLength(2);
+      expect(services.db.listEvents()).toHaveLength(eventCountBeforeConflict + 2);
     } finally {
       await client.close();
       await new Promise<void>((resolve, reject) =>

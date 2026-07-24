@@ -80,6 +80,7 @@ const application = createApp({
 const httpServer = createServer(application.app);
 const voiceWebSocketServer = attachVoiceWebSocketServer(httpServer, {
   db,
+  reminderService,
   voiceClient: linxVoiceClient,
 });
 let linxProxyServer: McpServer | undefined;

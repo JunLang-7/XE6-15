@@ -8,12 +8,21 @@ const messages = document.querySelector("#messages");
 const empty = document.querySelector("#empty");
 const connection = document.querySelector("#connection");
 const unread = document.querySelector("#unread");
+const voiceOutput = document.querySelector("#voice-output");
 const conversationFeed = document.querySelector("#conversation-feed");
 const scheduleCard = document.querySelector("#schedule-card");
 const scheduleTitle = document.querySelector("#schedule-title");
 const scheduleDate = document.querySelector("#schedule-date");
 const scheduleCount = document.querySelector("#schedule-count");
 const scheduleItems = document.querySelector("#schedule-items");
+const reminderCard = document.querySelector("#reminder-card");
+const reminderKicker = document.querySelector("#reminder-kicker");
+const reminderTitle = document.querySelector("#reminder-title");
+const reminderTime = document.querySelector("#reminder-time");
+const reminderQueue = document.querySelector("#reminder-queue");
+const reminderClose = document.querySelector("#reminder-close");
+const reminderSnooze = document.querySelector("#reminder-snooze");
+const reminderError = document.querySelector("#reminder-error");
 
 let holding = false;
 let busy = false;
@@ -30,6 +39,10 @@ let lastTranscription = "";
 let receipts = [];
 let activeTab = "voice";
 let unreadCount = 0;
+let surfaceBeforeReminder = "conversation";
+let reminderBatchReceiptIds = [];
+let pendingReminderActionId = null;
+let reminderTransitionTimer = null;
 const configuredBubbleLimit = Number.parseInt(localStorage.getItem("voiceBubbleLimit") ?? "3", 10);
 const bubbleLimit = [1, 3, 5].includes(configuredBubbleLimit) ? configuredBubbleLimit : 3;
 const bubbleLifetimeMs = 12_000;
@@ -189,8 +202,29 @@ function renderScheduleCard(receipt) {
           </div>
         </article>`).join("")
     : '<div class="schedule-empty">这个时间范围内没有日程</div>';
+  if (!reminderCard.hidden) {
+    surfaceBeforeReminder = "schedule";
+    return;
+  }
   conversationFeed.hidden = true;
   scheduleCard.hidden = false;
+}
+
+function formatReminderDate(value) {
+  if (!value) return "现在";
+  const date = new Date(value);
+  const dateKey = date.toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" });
+  const todayKey = new Date().toLocaleDateString("zh-CN", { timeZone: "Asia/Shanghai" });
+  const time = formatClock(value);
+  if (dateKey === todayKey) return `今天 ${time}`;
+  return date.toLocaleString("zh-CN", {
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Asia/Shanghai",
+  });
 }
 
 function setActiveTab(tab) {
@@ -220,6 +254,105 @@ function activeReceiptIds() {
     }
   }
   return new Set([...statesByReminder.values()].filter(Boolean));
+}
+
+function activeDueReceipts(activeIds = activeReceiptIds()) {
+  return receipts.filter((receipt) =>
+    receipt.type === "reminder_due" && activeIds.has(receipt.id),
+  );
+}
+
+function renderReminderCard(activeIds = activeReceiptIds()) {
+  if (pendingReminderActionId) return;
+  const activeDue = activeDueReceipts(activeIds);
+  const receipt = activeDue[0];
+  if (!receipt) {
+    reminderBatchReceiptIds = [];
+    if (!reminderCard.hidden) {
+      reminderCard.hidden = true;
+      voiceOutput.classList.remove("has-reminder");
+      reminderCard.removeAttribute("aria-busy");
+      reminderError.hidden = true;
+      reminderClose.disabled = false;
+      reminderSnooze.disabled = false;
+      if (surfaceBeforeReminder === "schedule") {
+        scheduleCard.hidden = false;
+        conversationFeed.hidden = true;
+      } else {
+        conversationFeed.hidden = false;
+        scheduleCard.hidden = true;
+      }
+    }
+    return;
+  }
+
+  const activeDueIds = activeDue.map((item) => item.id);
+  const continuesCurrentBatch = activeDueIds.some((id) => reminderBatchReceiptIds.includes(id));
+  if (!continuesCurrentBatch) {
+    reminderBatchReceiptIds = [...activeDueIds];
+  } else {
+    for (const id of activeDueIds) {
+      if (!reminderBatchReceiptIds.includes(id)) reminderBatchReceiptIds.push(id);
+    }
+  }
+
+  if (reminderCard.hidden) {
+    surfaceBeforeReminder = scheduleCard.hidden ? "conversation" : "schedule";
+  }
+  if (reminderCard.dataset.reminderId !== receipt.reminderId) {
+    reminderCard.dataset.reminderId = receipt.reminderId;
+    reminderCard.removeAttribute("aria-busy");
+    reminderClose.disabled = false;
+    reminderSnooze.disabled = false;
+    reminderError.hidden = true;
+  }
+  const wasSnoozed = Number(receipt.data?.snoozeCount) > 0;
+  reminderKicker.textContent = wasSnoozed ? "再次提醒" : "提醒到点了";
+  reminderTitle.textContent = receipt.data?.title ?? receipt.body;
+  reminderTime.textContent = `${wasSnoozed ? "原定" : "日程时间"} · ${formatReminderDate(receipt.data?.effectiveStartAt)}`;
+  const total = reminderBatchReceiptIds.length;
+  const position = Math.max(1, reminderBatchReceiptIds.indexOf(receipt.id) + 1);
+  reminderQueue.textContent = total > 1
+    ? `共 ${total} 条同时到达的提醒 · 当前第 ${position} 条`
+    : "";
+  reminderQueue.hidden = total === 1;
+  reminderClose.dataset.reminderId = receipt.reminderId;
+  reminderSnooze.dataset.reminderId = receipt.reminderId;
+  reminderSnooze.hidden = receipt.data?.finalDelivery === true;
+  reminderError.hidden = true;
+  conversationFeed.hidden = true;
+  scheduleCard.hidden = true;
+  voiceOutput.classList.add("has-reminder");
+  conversationFeed.hidden = false;
+  reminderCard.hidden = false;
+}
+
+function beginReminderResolution(reminderId) {
+  pendingReminderActionId = reminderId;
+  clearTimeout(reminderTransitionTimer);
+  reminderCard.classList.add("is-resolving");
+  reminderCard.setAttribute("aria-busy", "true");
+  reminderClose.disabled = true;
+  reminderSnooze.disabled = true;
+}
+
+function finishReminderResolution() {
+  clearTimeout(reminderTransitionTimer);
+  reminderTransitionTimer = setTimeout(() => {
+    pendingReminderActionId = null;
+    reminderCard.classList.remove("is-resolving");
+    reminderCard.removeAttribute("aria-busy");
+    renderReceipts();
+  }, 220);
+}
+
+function cancelReminderResolution() {
+  clearTimeout(reminderTransitionTimer);
+  pendingReminderActionId = null;
+  reminderCard.classList.remove("is-resolving");
+  reminderCard.removeAttribute("aria-busy");
+  reminderClose.disabled = false;
+  reminderSnooze.disabled = false;
 }
 
 function renderReceipts() {
@@ -264,6 +397,7 @@ function renderReceipts() {
       </article>`;
     })
     .join("");
+  renderReminderCard(activeReminders);
 }
 
 async function request(url, options = {}) {
@@ -630,6 +764,31 @@ messages.addEventListener("click", async (event) => {
   }
 });
 
+reminderCard.addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-reminder-id]");
+  if (!button) return;
+  const reminderId = button.dataset.reminderId;
+  const isSnooze = button === reminderSnooze;
+  beginReminderResolution(reminderId);
+  reminderError.hidden = true;
+  try {
+    if (isSnooze) {
+      await request(`/api/reminders/${reminderId}/snooze`, {
+        method: "POST",
+        body: JSON.stringify({ minutes: 10 }),
+      });
+    } else {
+      await request(`/api/reminders/${reminderId}/close`, { method: "POST" });
+    }
+    await loadReceipts();
+    finishReminderResolution();
+  } catch (error) {
+    cancelReminderResolution();
+    reminderError.textContent = error instanceof Error ? error.message : "提醒处理失败，请重试";
+    reminderError.hidden = false;
+  }
+});
+
 document.addEventListener("visibilitychange", () => {
   if (document.hidden && holding) endHold(new Event("visibilitychange", { cancelable: true }));
 });
@@ -641,8 +800,15 @@ eventSource.addEventListener("open", () => {
 });
 eventSource.addEventListener("receipt", (event) => {
   const receipt = JSON.parse(event.data);
+  const resolvesVisibleReminder = (
+    receipt.type === "reminder_closed" || receipt.type === "reminder_snoozed"
+  ) && receipt.reminderId === reminderCard.dataset.reminderId && !reminderCard.hidden;
+  if (resolvesVisibleReminder && !pendingReminderActionId) {
+    beginReminderResolution(receipt.reminderId);
+  }
   if (!receipts.some((item) => item.id === receipt.id)) receipts.push(receipt);
   renderReceipts();
+  if (resolvesVisibleReminder) finishReminderResolution();
   if (activeTab !== "messages") {
     unreadCount += 1;
     unread.textContent = unreadCount > 9 ? "9+" : String(unreadCount);
