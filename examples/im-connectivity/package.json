@@ -1,0 +1,24 @@
+{
+  "name": "voicelife-im-connectivity-demos",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "dingtalk": "tsx src/dingtalk-stream.ts",
+    "feishu": "tsx src/feishu-websocket.ts",
+    "wecom": "tsx src/wecom-websocket.ts",
+    "wechat": "tsx src/wechat-callback.ts",
+    "test:wechat": "tsx src/wechat-callback.test.ts"
+  },
+  "dependencies": {
+    "@larksuiteoapi/node-sdk": "1.71.1",
+    "@wecom/aibot-node-sdk": "1.0.7",
+    "dingtalk-stream": "2.1.6-beta.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}
