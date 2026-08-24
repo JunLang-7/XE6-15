@@ -271,6 +271,31 @@ Result<ReminderActionResult> ScheduleReminderService::SnoozeRecentReminders() {
                                                   .replayed = false});
 }
 
+Result<ReminderActionResult> ScheduleReminderService::ExecuteLatestVoiceAction(ScheduleReminderActionKind action) {
+    const auto recent = reminder_repository_.FindTriggered(Now() - kRecentWindow, Now());
+    if (!recent.ok()) return Result<ReminderActionResult>::Failure(recent.status.code, recent.status.message);
+    const ScheduleReminderTask* selected = nullptr;
+    for (const auto& task : *recent.value) {
+        if (task.business_status != ScheduleReminderBusinessStatus::kWaitingAcknowledgement &&
+            task.business_status != ScheduleReminderBusinessStatus::kExhausted)
+            continue;
+        if (selected == nullptr || task.triggered_at.value_or(task.updated_at) >
+                                      selected->triggered_at.value_or(selected->updated_at)) {
+            selected = &task;
+        }
+    }
+    if (selected == nullptr || !selected->timing_task_id.has_value()) {
+        return Result<ReminderActionResult>::Failure(ErrorCode::kNotFound, "最近没有可操作的提醒");
+    }
+    ReminderActionCommand command;
+    command.reminder_trigger_id = *selected->timing_task_id;
+    command.operation_id = "voice-" + command.reminder_trigger_id +
+                           (action == ScheduleReminderActionKind::kSnooze ? "-snooze" : "-acknowledge");
+    command.action = action;
+    if (action == ScheduleReminderActionKind::kSnooze) command.snooze_minutes = static_cast<int>(kFollowUpDelay.count());
+    return ExecuteReminderAction(command);
+}
+
 Result<ReminderActionResult> ScheduleReminderService::ExecuteReminderAction(const ReminderActionCommand& command) {
     if (command.operation_id.empty() || command.reminder_trigger_id.empty()) {
         return Result<ReminderActionResult>::Failure(ErrorCode::kInvalidArgument, "提醒动作标识不能为空");

@@ -278,6 +278,7 @@ class Runtime final {
         });
         reminder_notification_ = std::make_unique<ImScheduleReminderNotification>(
             im_runtime_, [this](im::ActionWindow window) { EnqueueReminderActionWindow(std::move(window)); });
+        voice_action_reporter_ = std::make_unique<ImVoiceReminderActionReporter>(im_runtime_);
         schedule_reminder_service_ = std::make_unique<schedule::ScheduleReminderService>(
             storage_.GetScheduleRepository(), storage_.GetScheduleReminderTaskRepository(), schedule_service_,
             schedule_rule_service_, *timing_runtime_, *reminder_speech_, reminder_notification_.get());
@@ -287,7 +288,14 @@ class Runtime final {
         // 内部堆上同时竞争初始化峰值。回调只有在 MCP worker 启动后才会执行。
         if (!schedule_mcp_registered_) {
             init_status_ = mcp::RegisterScheduleMcpTools(mcp_server_, schedule_service_, schedule_rule_service_,
-                                                         schedule_operation_service_, schedule_reminder_service_.get());
+                                                         schedule_operation_service_, schedule_reminder_service_.get(),
+                                                         {.runtime = &im_runtime_,
+                                                          .voice_action_reporter = [this](const auto& result) {
+                                                              return voice_action_reporter_ == nullptr
+                                                                         ? Status::Error(ErrorCode::kUnavailable,
+                                                                                        "语音动作上报器未初始化")
+                                                                         : voice_action_reporter_->Report(result);
+                                                          }});
             if (!init_status_.ok()) return fail_startup(init_status_);
             schedule_mcp_registered_ = true;
             // MCP worker 只产生绑定结果；轮询与 OLED/TTS 均由各自受控任务处理。
@@ -455,6 +463,7 @@ class Runtime final {
         reminder_action_executor_.reset();
         schedule_reminder_service_.reset();
         reminder_notification_.reset();
+        voice_action_reporter_.reset();
         reminder_speech_.reset();
         timing_runtime_.reset();
     }
@@ -1933,6 +1942,7 @@ class Runtime final {
     std::unique_ptr<timing_esp::EspTimingTaskRuntime> timing_runtime_;
     std::unique_ptr<ReminderSpeech> reminder_speech_;
     std::unique_ptr<ImScheduleReminderNotification> reminder_notification_;
+    std::unique_ptr<ImVoiceReminderActionReporter> voice_action_reporter_;
     std::unique_ptr<schedule::ScheduleReminderService> schedule_reminder_service_;
     std::unique_ptr<ImScheduleReminderActionExecutor> reminder_action_executor_;
     EspScheduleReminderClock reminder_action_clock_;

@@ -118,6 +118,8 @@ class ScheduleReminderService final {
      * @return 动作结果或错误状态。
      */
     Result<ReminderActionResult> SnoozeRecentReminders();
+    /** @brief 为设备语音入口选择最近一条可操作提醒并按稳定 operationId 精确执行。 */
+    Result<ReminderActionResult> ExecuteLatestVoiceAction(ScheduleReminderActionKind action);
     /** @brief 按精确触发标识幂等执行提醒动作。
      * @param command 本地动作命令。
      * @return 首次提交或持久化重放的动作结果。

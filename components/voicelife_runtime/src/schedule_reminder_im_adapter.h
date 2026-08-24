@@ -44,4 +44,15 @@ class EspScheduleReminderClock final : public im::ImClock {
     std::string NowIso() override;
 };
 
+/** @brief 将本地语音动作事实可靠提交给 Gateway；失败不回滚本地提醒。 */
+class ImVoiceReminderActionReporter final {
+   public:
+    explicit ImVoiceReminderActionReporter(im::ImRuntime& runtime) : runtime_(runtime) {}
+
+    Status Report(const schedule::ReminderActionResult& result);
+
+   private:
+    im::ImRuntime& runtime_;
+};
+
 }  // namespace voicelife::runtime

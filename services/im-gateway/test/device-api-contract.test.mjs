@@ -9,18 +9,30 @@ import {
     SSE_RESPONSE_HEADERS,
     SseActionCommandHub,
 } from '../dist/index.js';
-import { buildGateway, expectGatewayError, scheduleQueryResultIntent, strongIntent } from './helpers.mjs';
+import {
+    buildGateway,
+    expectGatewayError,
+    pendingStrongDelivery,
+    scheduleQueryResultIntent,
+    strongIntent,
+} from './helpers.mjs';
 
 test('device route metadata matches the Issue #65 transport contract', () => {
     assert.equal(DEVICE_API_ROUTES.pairingSessions, '/v1/im/pairing-sessions');
     assert.equal(DEVICE_API_ROUTES.scheduleReceipts, '/v1/im/schedule-receipts');
     assert.equal(DEVICE_API_ROUTES.scheduleQueryResults, '/v1/im/schedule-query-results');
     assert.equal(DEVICE_API_ROUTES.notifications, '/v1/im/notifications');
+    assert.equal(DEVICE_API_ROUTES.voiceReminderActionStatuses, '/v1/im/reminder-action-statuses');
     assert.equal(DEVICE_API_ROUTES.reminderActionStream, '/v1/devices/:deviceId/reminder-actions/stream');
     assert.equal(DEVICE_API_ROUTES.reminderActionResults, '/v1/devices/:deviceId/reminder-actions/:commandId/result');
     assert.deepEqual(DEVICE_API_ENDPOINTS.notification, {
         method: 'POST',
         path: '/v1/im/notifications',
+        transport: 'https',
+    });
+    assert.deepEqual(DEVICE_API_ENDPOINTS.voiceReminderActionStatus, {
+        method: 'POST',
+        path: '/v1/im/reminder-action-statuses',
         transport: 'https',
     });
     assert.deepEqual(SSE_RESPONSE_HEADERS, {
@@ -29,6 +41,49 @@ test('device route metadata matches the Issue #65 transport contract', () => {
         'X-Accel-Buffering': 'no',
     });
     assert.equal(SSE_HEARTBEAT_INTERVAL_SECONDS >= 15 && SSE_HEARTBEAT_INTERVAL_SECONDS <= 30, true);
+});
+
+test('voice reminder status is idempotent and closes the pending H5 action', async () => {
+    const { gateway } = buildGateway();
+    const deliveryId = await pendingStrongDelivery(gateway);
+    await gateway.application.deliveryDispatch.dispatch(deliveryId);
+    const token = await gateway.application.actionUi.issue(deliveryId);
+    const command = await gateway.application.actionUi.execute({ token, action: 'acknowledge' });
+    const body = {
+        schemaVersion: '1',
+        eventId: 'voice-event-fixture',
+        correlationId: 'voice-correlation-fixture',
+        deviceId: 'device-fixture',
+        reminderTriggerId: command.reminderTriggerId,
+        operationId: 'voice-operation-fixture',
+        action: 'acknowledge',
+        status: 'succeeded',
+        occurredAt: '2026-08-03T00:01:00.000Z',
+        source: 'voice',
+    };
+    const first = await gateway.deviceApi.postVoiceReminderActionStatus({
+        authorization: 'Bearer fixture-device-token',
+        idempotencyKey: body.eventId,
+        body,
+    });
+    assert.equal(first[0].status, 'succeeded');
+    const replay = await gateway.deviceApi.postVoiceReminderActionStatus({
+        authorization: 'Bearer fixture-device-token',
+        idempotencyKey: body.eventId,
+        body,
+    });
+    assert.deepEqual(replay, first);
+    assert.equal((await gateway.application.actionUi.show(token)).state, 'succeeded');
+    await expectGatewayError(
+        () =>
+            gateway.deviceApi.postVoiceReminderActionStatus({
+                authorization: 'Bearer fixture-device-token',
+                idempotencyKey: 'other-event',
+                body,
+            }),
+        'duplicate_event',
+        'A mismatched voice status Idempotency-Key was accepted',
+    );
 });
 
 test('schedule query result enforces device identity and idempotency', async () => {

@@ -1,12 +1,17 @@
 #pragma once
 
 #include <string>
+
+#include "voicelife/contracts/im/voice_reminder_action_status.h"
+
+#include <string>
 #include <string_view>
 
 #include "voicelife/contracts/im/notification_intent.h"
 #include "voicelife/contracts/im/reminder_action_result.h"
 #include "voicelife/contracts/im/schedule_query_result.h"
 #include "voicelife/contracts/im/schedule_receipt.h"
+#include "voicelife/contracts/im/voice_reminder_action_status.h"
 
 namespace voicelife::im {
 
@@ -21,5 +26,7 @@ std::string SerializeScheduleQueryResultIntent(const contracts::im::ScheduleQuer
 std::string SerializeNotificationIntent(const contracts::im::NotificationIntent& intent);
 /// 把提醒动作执行结果序列化为网关契约 JSON 文本。
 std::string SerializeReminderActionResult(const contracts::im::ReminderActionResult& result);
+/// 把设备语音直接消费状态序列化为网关契约 JSON 文本。
+std::string SerializeVoiceReminderActionStatus(const contracts::im::VoiceReminderActionStatus& status);
 
 }  // namespace voicelife::im

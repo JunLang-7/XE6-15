@@ -48,6 +48,7 @@ add_voicelife_library(contracts voicelife_contracts
     "${ROOT_DIR}/components/voicelife_contracts/src/im/schedule_query_result.cc"
     "${ROOT_DIR}/components/voicelife_contracts/src/im/reminder_action_result.cc"
     "${ROOT_DIR}/components/voicelife_contracts/src/im/reminder_action_command.cc"
+    "${ROOT_DIR}/components/voicelife_contracts/src/im/voice_reminder_action_status.cc"
     "${ROOT_DIR}/components/voicelife_contracts/src/im/notification_submission.cc"
     "${ROOT_DIR}/components/voicelife_contracts/src/im/pairing_session.cc")
 target_link_libraries(contracts PRIVATE yyjson)
