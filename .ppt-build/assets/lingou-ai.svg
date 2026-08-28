@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="纯黑单空缺 3D 打印品牌 Logo">
+  <g fill="#000000" stroke="#000000" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 上部弧形保持不变，只将中央两个小三角空缺合并为一个居中的等腰三角空缺 -->
+    <path d="M58 104C111 157 177 187 238 193L256 235L274 193C335 187 401 157 454 104C422 202 348 250 256 252C164 250 90 202 58 104Z" stroke="none"/>
+    <!-- 保留下方原有的黑色倒三角 -->
+    <path d="M232 246H280L256 286Z" stroke="none"/>
+    <!-- 保留下方原有立方体 -->
+    <path d="m256 301 74 43-74 43-74-43Zm-74 43v72l74 43v-72Zm148 0v72l-74 43v-72Z" fill="none" stroke-width="22"/>
+  </g>
+</svg>
