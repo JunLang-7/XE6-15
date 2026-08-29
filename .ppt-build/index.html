@@ -93,11 +93,9 @@
     .demo-step h3 { margin: 10px 0 8px; font-size: 21px; }
     .demo-step p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.42; }
     .demo-proof { grid-column: 1 / -1; margin: 14px 0 0; padding: 12px 18px; border-radius: 14px; background: var(--green-pale); color: var(--ink); font-size: 16px; font-weight: 800; text-align: center; }
-    .live-page { margin-top: 48px; }
-    .live-board { height: 330px; border: 2px dashed var(--blue); border-radius: 24px; background: var(--blue-pale); display: grid; place-items: center; position: relative; }
-    .live-board .live-mark { color: var(--blue); font-size: 42px; font-weight: 900; letter-spacing: .04em; }
-    .live-board .live-command { position: absolute; left: 28px; right: 28px; bottom: 24px; display: flex; justify-content: space-between; gap: 24px; align-items: center; color: var(--ink); font-size: 18px; font-weight: 800; }
-    .live-board .live-command span { color: var(--muted); font-size: 14px; font-weight: 700; }
+    .live-page { margin-top: 16px; }
+    .live-board { width: min(100%, 960px); aspect-ratio: 16 / 9; margin: 0 auto; border: 2px solid var(--blue); border-radius: 24px; background: var(--dark); overflow: hidden; position: relative; }
+    .live-board video { display: block; width: 100%; height: 100%; object-fit: contain; background: var(--dark); }
     .live-stages { margin-top: 20px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
     .live-stage { padding: 14px 16px; border-top: 4px solid var(--blue); border-radius: 12px; background: rgba(255,255,255,.86); color: var(--muted); font-size: 15px; font-weight: 800; text-align: center; }
     .live-stage:nth-child(2) { border-top-color: var(--cyan); }
@@ -216,6 +214,10 @@
     .metric { display: grid; grid-template-columns: 140px 1fr; gap: 22px; padding: 19px 0; border-bottom: 1px solid var(--line); align-items: center; }
     .metric strong { font-size: 21px; }
     .metric span { color: var(--muted); font-size: 17px; }
+    .market-proof { margin-top: 12px; display: grid; grid-template-columns: 240px 1fr; gap: 26px; align-items: center; padding: 12px 20px; border: 1px solid #f2c59f; border-left: 6px solid var(--orange); border-radius: 16px; background: var(--orange-pale); }
+    .market-proof .label { color: var(--orange); font-size: 16px; font-weight: 900; line-height: 1.4; }
+    .market-proof strong { display: block; color: var(--ink); font-size: 20px; }
+    .market-proof p { margin: 4px 0 0; color: var(--muted); font-size: 15px; line-height: 1.35; }
     .method { margin-top: 86px; display: flex; justify-content: space-between; align-items: flex-start; }
     .method-item { width: 160px; text-align: center; position: relative; }
     .method-item:not(:last-child)::after { content: ""; position: absolute; left: 146px; top: 28px; width: 90px; border-top: 3px solid var(--line); }
@@ -359,9 +361,9 @@
 
     <section class="slide" data-title="产品结构"><div class="sheet pale"><div class="content"><div class="chrome"><span>产品结构</span><span>02</span></div><h1 class="h1">从三视图到可装配实体，牛牛的结构一眼可见</h1><p class="h2">外壳、显示、主板与内部组件分别验证，再组合成可挂在书包上的产品</p><div class="structure-page"><article class="structure-panel scene"><h3>使用场景</h3><img src="assets/product-scenario.png" alt="牛牛挂在书包上和随身携带的使用场景"><p class="caption">串在钥匙上，挂在书包上，融入儿童每天的生活</p></article><article class="structure-panel"><h3>整机三视图</h3><img src="assets/product-three-view.png" alt="牛牛整机正面、侧面、背面三视图"><p class="caption">正面：屏幕与语音交互 ｜ 背面：装配与维护空间</p></article><article class="structure-panel exploded"><h3>结构分解图</h3><img src="assets/product-exploded-stl.png" alt="基于前后壳建模文件渲染的结构分解图"><p class="caption">前壳、屏幕、主板、后壳按装配顺序分层呈现，来自真实建模文件</p></article><div class="structure-credit"><img src="assets/lingou-ai.svg" alt="灵构AI Logo"><span>外壳由灵构AI小组完成 3D 打印与整机装配</span></div></div></div></div></section>
 
-    <section class="slide" data-title="Live 演示"><div class="sheet pale"><div class="content"><div class="chrome"><span>Live 演示</span><span>02</span></div><h1 class="h1">现在，让牛牛把产品定义变成一次真实回应</h1><p class="h2">请把注意力交给设备：儿童说一句话，牛牛负责记住、提醒，并等待回应</p><div class="live-page"><div class="live-board"><div class="live-mark">LIVE 真机演示</div><div class="live-command"></div></div><div class="live-stages"><div class="live-stage">说出来</div><div class="live-stage">牛牛确认</div><div class="live-stage">到点语音</div><div class="live-stage">说“知道了”</div></div></div></div></div></section>
+    <section class="slide" data-title="Live 演示"><div class="sheet pale"><div class="content"><div class="chrome"><span>视频演示</span><span>02</span></div><h1 class="h1">现在，让牛牛把产品定义变成一次真实回应</h1><div class="live-page"><div class="live-board"><video controls preload="metadata" playsinline aria-label="VoiceLife 牛牛真机 Live 演示视频"><source src="assets/voicelife-live-demo.mp4" type="video/mp4">你的浏览器不支持此视频播放。</video></div></div></div></div></section>
 
-    <section class="slide" data-title="开场链路"><div class="sheet pale"><div class="content"><div class="chrome"><span>开场链路</span><span>03</span></div><h1 class="h1">刚才的 Live，完整走过了这条产品链路</h1><p class="h2">从儿童开口，到家长在微信里看见提醒已经被处理</p><div class="flow"><div class="flow-item"><div class="dot" style="background:var(--blue)">1</div><h3>儿童说出来</h3></div><div class="flow-item"><div class="dot" style="background:var(--blue)">2</div><h3>牛牛记下来</h3></div><div class="flow-item"><div class="dot" style="background:var(--orange)">3</div><h3>到点语音<br>+ 微信提醒</h3></div><div class="flow-item"><div class="dot" style="background:var(--green)">4</div><h3>说“知道了”</h3></div><div class="flow-item"><div class="dot" style="background:var(--cyan)">5</div><h3>微信显示已消费</h3></div></div><p class="quote">提醒到达时，设备和微信同时触达；儿童完成一次处理，家长获得一次可观察的反馈。</p><div class="source">产品链路：语音提醒 + 微信提醒 + IM 消费回执</div></div></div></section>
+    <section class="slide" data-title="开场链路"><div class="sheet pale"><div class="content"><div class="chrome"><span>开场链路</span><span>03</span></div><h1 class="h1">刚才的视频，完整走过了这条产品链路</h1><p class="h2">从儿童开口，到家长在微信里看见提醒已经被处理</p><div class="flow"><div class="flow-item"><div class="dot" style="background:var(--blue)">1</div><h3>儿童说出来</h3></div><div class="flow-item"><div class="dot" style="background:var(--blue)">2</div><h3>牛牛记下来</h3></div><div class="flow-item"><div class="dot" style="background:var(--orange)">3</div><h3>到点语音<br>+ 微信提醒</h3></div><div class="flow-item"><div class="dot" style="background:var(--green)">4</div><h3>说“知道了”</h3></div><div class="flow-item"><div class="dot" style="background:var(--cyan)">5</div><h3>微信显示已消费</h3></div></div><p class="quote">提醒到达时，设备和微信同时触达；<br>儿童完成一次处理，家长获得一次可观察的反馈。</p><div class="source">产品链路：语音提醒 + 微信提醒 + IM 消费回执</div></div></div></section>
 
     <section class="slide" data-title="目标用户"><div class="sheet"><div class="content"><div class="chrome"><span>目标用户</span><span>04</span></div><h1 class="h1">我们服务的是没有个人智能终端的小学生</h1><p class="h2">儿童是日程的主要操作者，不需要借用手机完成主流程</p><div class="target"><div class="dark-box"><h3>小学阶段儿童</h3><p>有零散的学习与生活安排<br>愿意用自然语言说出自己的计划<br>能听懂牛牛的简短确认<br><br><strong style="color:var(--cyan)">不依赖个人手机</strong></p></div><div class="roles"><div class="role"><h3 style="color:var(--blue)">儿童</h3><p>说出安排 / 查询 / 处理当前提醒</p></div><div class="role"><h3 style="color:var(--orange)">牛牛</h3><p>即时确认 / 到点语音 / 小屏幕反馈</p></div><div class="role"><h3 style="color:var(--green)">微信公众号</h3><p>回执 / 完整列表 / 有效期内辅助操作</p></div></div></div></div></div></section>
 
@@ -375,7 +377,7 @@
 
     <section class="slide" data-title="微信协同"><div class="sheet"><div class="content"><div class="chrome"><span>微信公众号协同</span><span>11</span></div><h1 class="h1">微信让家长看见：这一次提醒有没有真正被处理</h1><p class="h2">当儿童在设备端说“知道了”，IM 端把提醒状态更新为“已消费”</p><div class="wechat"><article class="panel"><div><img src="assets/wechat-help.png" alt="微信公众号帮助与绑定码提示"><img src="assets/wechat-bound.png" alt="微信公众号绑定成功回执"></div><div class="label" style="color:var(--green)">绑定设备，建立家长观察入口</div></article><article class="panel"><div><img src="assets/wechat-query-summary.png" alt="日程查询摘要"><img src="assets/wechat-query-detail.png" alt="日程查询详情页"></div><div class="label" style="color:var(--blue)">查看安排与处理状态</div></article><article class="panel"><div><img src="assets/wechat-reminder-test.png" alt="提醒事件回传微信公众号的测试结果"></div><div class="label" style="color:var(--orange)">“知道了”→ 提醒已消费</div></article></div><p class="h2" style="text-align:center;max-width:none;margin-top:34px;font-weight:800;color:var(--ink)">家长不替儿童操作，而是通过真实回执参与提醒复盘、鼓励和习惯培养。</p></div></div></section>
 
-    <section class="slide" data-title="从设计到实物"><div class="sheet"><div class="content"><div class="chrome"><span>从设计到实物</span><span>11</span></div><h1 class="h1">从设计稿到开发板，再到可携带样机</h1><div class="physical"><div><img src="assets/product-sample.png" alt="设计方案与 3D 打印样机"><p class="micro" style="text-align:center;margin-top:14px;font-weight:800;color:var(--blue)">设计方案 ｜ 3D 打印样机</p></div><div><div class="metric"><strong style="color:var(--blue)">ESP32-S3</strong><span>完成设备侧链路验证</span></div><div class="metric"><strong style="color:var(--orange)">语音链路</strong><span>多轮会话、音频与显示回归</span></div><div class="metric"><strong style="color:var(--green)">存储链路</strong><span>SQLite / FATFS / 复位恢复验证</span></div><div class="metric"><strong style="color:var(--ink)">真实形态</strong><span>产品不再停留在概念图，而是有可运行的实体样机</span></div></div></div><div class="source">证据：仓库工程文档 + 用户提供的样机图片</div></div></div></section>
+    <section class="slide" data-title="从设计到实物"><div class="sheet"><div class="content"><div class="chrome"><span>从设计到实物</span><span>11</span></div><h1 class="h1">从设计稿到开发板，再到可携带样机</h1><div class="physical"><div><img src="assets/product-sample.png" alt="设计方案与 3D 打印样机"><p class="micro" style="text-align:center;margin-top:14px;font-weight:800;color:var(--blue)">设计方案 ｜ 3D 打印样机</p></div><div><div class="metric"><strong style="color:var(--blue)">ESP32-S3</strong><span>完成设备侧链路验证</span></div><div class="metric"><strong style="color:var(--orange)">语音链路</strong><span>多轮会话、音频与显示回归</span></div><div class="metric"><strong style="color:var(--green)">存储链路</strong><span>SQLite / FATFS / 复位恢复验证</span></div></div></div><div class="market-proof"><div class="label">产品吸引力</div><div><strong>宣传片发布后，已有 5 位以上同事主动询问购买</strong><p>完整、可感知的产品体验已显现吸引力，而不只是功能的堆叠。</p></div></div></div></div></section>
 
     <section class="slide" data-title="架构设计"><div class="sheet pale"><div class="content"><div class="chrome"><span>架构设计</span><span>12</span></div><h1 class="h1">用稳定的核心，承接可替换的设备与平台</h1><p class="h2">先定义业务事实，再把外部依赖放到边界之外</p><div class="architecture-layout"><div class="architecture"><article class="block" style="background:var(--blue-pale);border-color:var(--blue)"><h3 style="color:var(--blue)">领域核心</h3><p>日程事实<br>定时任务<br>提醒状态</p></article><article class="block" style="background:var(--orange-pale);border-color:var(--orange)"><h3 style="color:var(--orange)">应用编排</h3><p>跨域用例<br>领域事件<br>原子提交</p></article><article class="block" style="background:var(--green-pale);border-color:var(--green)"><h3 style="color:var(--green)">Ports / Adapters</h3><p>语音 / SQLite<br>ESP-IDF / IM Gateway<br>可替换、可测试</p></article><div class="foot">核心不认识平台细节；领域事件连接日程、定时与通知；Adapter 负责翻译。</div></div><div class="architecture-side"><div class="architecture-properties"><article class="architecture-property"><h3 style="color:var(--blue)">可维护</h3><p>规则集中在领域与 Use Case，平台判断不扩散。</p></article><article class="architecture-property"><h3 style="color:var(--orange)">可扩展</h3><p>新增设备或渠道，只需 Adapter 与契约测试。</p></article><article class="architecture-property"><h3 style="color:var(--green)">可验证</h3><p>事件、幂等与恢复边界清晰，主机测试先行。</p></article></div><div class="architecture-side-note">架构先回答边界，再回答技术：业务事实留在核心，平台差异留在适配器，跨模块协作通过事件与契约连接。</div></div></div></div></div></section>
 
@@ -395,6 +397,7 @@
     const slides = [...document.querySelectorAll('.slide')];
     document.querySelectorAll('img[src="assets/wechat-reminder-test.png"]').forEach(img => { img.src = 'assets/wechat-reminder-real-vertical-gray-balanced.png'; });
     const architectureFrame = document.querySelector('.architecture-live-frame');
+    const liveVideos = [...document.querySelectorAll('.live-board video')];
     if (architectureFrame) {
       architectureFrame.addEventListener('load', () => {
         try {
@@ -418,6 +421,9 @@
     function show(next) {
       index = (next + slides.length) % slides.length;
       slides.forEach((s, i) => s.classList.toggle('active', i === index));
+      liveVideos.forEach(video => {
+        if (!slides[index].contains(video)) video.pause();
+      });
       progress.style.width = `${((index + 1) / slides.length) * 100}%`;
       document.title = `${slides[index].dataset.title} · VoiceLife 牛牛`;
     }
@@ -434,6 +440,7 @@
       await requestFullscreen.call(document.documentElement);
     }
     window.addEventListener('keydown', (event) => {
+      if (document.activeElement?.tagName === 'VIDEO') return;
       if (event.key.toLowerCase() === 'f' && !event.metaKey && !event.ctrlKey && !event.altKey) {
         event.preventDefault();
         toggleFullscreen().catch(() => {});
